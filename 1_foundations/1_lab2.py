@@ -91,3 +91,50 @@ display(Markdown(answer).data)
 
 competitors.append(GROQ_MODEL)
 answers.append(answer)
+
+print(competitors)
+print(answers)
+
+for competitor, answer in zip(competitors, answers):
+    print(f"Competitor: {competitor}\n\n{answer}")
+    display(Markdown(answer).data)
+    print("\n\n")
+
+together = ""
+
+for index, answer in enumerate(answers):
+    together += f"Competitor: {index + 1}\n\n{answer}\n\n"
+
+display(Markdown(together).data)
+
+judge = f"""You are judging a competition between {len(competitors)} competitors.
+Each model has been given this question:
+
+{question}
+
+Your job is to evaluate each response for clarity and strength of argument, and rank them in order of best to worst. Respond with JSON, and only JSON, with the following format:
+{{"result": ["best competitor number", "second best competitor number", "third best competitor number", ...]}}
+
+Here are the responses for each competitor:
+
+{together}
+
+Now respond with the JSON with the ranked order of the competitors, nothign else. Do not include markdown formatting or code blocks."""
+
+print(judge)
+
+judge_messages = [{"role": "user", "content": judge}]
+
+groq_client = OpenAI(api_key=groq_api_key, base_url=groq_base_url)
+response = groq_client.chat.completions.create(
+    model=GROQ_MODEL, messages=judge_messages
+)
+
+results = response.choices[0].message.content
+print("RAW RESULTS", results)
+
+results_dict = json.loads(results)
+ranks = results_dict["result"]
+for index, result in enumerate(ranks):
+    competitor = competitors[int(result) - 1]
+    print(f"Rank {index + 1}: {competitor}")
